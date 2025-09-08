@@ -129,8 +129,15 @@ function HomePage() {
   // Effect to handle sending a new message via WebSocket
   useEffect(() => {
     if (message.newMessage && isConnected && stompClient && currentChat?.id) {
-      stompClient.send("/app/message", {}, JSON.stringify(message.newMessage));
-      setMessages((prevMessages) => [...prevMessages, message.newMessage]);
+      try {
+        stompClient.publish({
+          destination: "/app/message",
+          body: JSON.stringify(message.newMessage)
+        });
+        setMessages((prevMessages) => [...prevMessages, message.newMessage]);
+      } catch (error) {
+        console.error("Error sending WebSocket message:", error);
+      }
     }
   }, [message.newMessage, isConnected, stompClient, currentChat]);
 
