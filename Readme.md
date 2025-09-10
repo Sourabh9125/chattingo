@@ -54,7 +54,7 @@ Makes deployment faster and more efficient
 
 🐳 Docker Compose Setup
 
-# Services Overview
+# Docker Compose Overview
 
 👉 Nginx (Reverse Proxy):
 Routes traffic to frontend and backend services.
