@@ -19,17 +19,6 @@ This is a full-stack real-time chat application built with:
 - Ports 80 and 443 open.
 - Jenkins installed (for CI/CD)
 
-# Project Structure
-  chattingo/
-├── frontend/
-│   ├── Dockerfile       # React build + Nginx
-│   ├── nginx.conf       # Reverse proxy config
-├── backend/
-│   ├── Dockerfile       # Spring Boot backend
-│   ├── src/...
-├── docker-compose.yml   # Orchestrates services
-├── Jenkinsfile          # CI/CD pipeline
-
 🐳 Docker Setup
 
 👉 Frontend Dockerfile
