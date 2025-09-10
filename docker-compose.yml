@@ -1,7 +1,8 @@
 services:
   frontend:
-    build:
-      context: ./frontend/.
+    # build:
+    #   context: ./frontend/.
+    image: sourabhlodhi/chattingo-frontend:latest
     container_name: frontend
     networks:
       - chattingo-app
@@ -11,8 +12,9 @@ services:
       - "3000:80"
     
   backend:
-    build:
-      context: ./backend/.
+    # build:
+    #   context: ./backend/.
+    image: sourabhlodhi/chattingo-backend:latest
     container_name: backend
     networks:
       - chattingo-app
