@@ -19,7 +19,7 @@ This is a full-stack real-time chat application built with:
 - Ports 80 and 443 open.
 - Jenkins installed (for CI/CD)
 
-🐳 Docker Setup
+# 🐳 Docker Setup
 
 👉 Frontend Dockerfile
 The frontend Dockerfile follows a multi-stage build approach:
