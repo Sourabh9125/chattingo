@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.security.authentication.BadCredentialsException;
 
 import com.chattingo.Payload.ErrorDetail;
 
@@ -52,4 +53,9 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(err, HttpStatus.INTERNAL_SERVER_ERROR); // You might want to use a different status
                                                                             // code
     }
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ErrorDetail> badCredentialsExceptionHandler(BadCredentialsException e, WebRequest request) {
+        ErrorDetail err = new ErrorDetail(e.getMessage(), request.getDescription(false), LocalDateTime.now());
+        return new ResponseEntity<>(err, HttpStatus.UNAUTHORIZED);
+}
 }
