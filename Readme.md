@@ -30,182 +30,113 @@ This is a full-stack real-time chat application built with:
 ├── docker-compose.yml   # Orchestrates services
 ├── Jenkinsfile          # CI/CD pipeline
 
-#🐳 Docker Setup
+🐳 Docker Setup
 
-#Frontend Dockerfile
+👉 Frontend Dockerfile
+The frontend Dockerfile follows a multi-stage build approach:
 
-# Stage 1: Build React app
-FROM node:20-alpine AS build
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
+👉 Build Stage:
+Uses a lightweight Node.js image.
+Installs dependencies and builds the React app into static files.
 
-# Stage 2: Serve with Nginx
-FROM nginx:alpine
-COPY --from=build /app/build /usr/share/nginx/html
-EXPOSE 80
+👉 Production Stage:
+Uses a minimal Nginx image to serve the static files.
+Exposes port 80 for HTTP traffic.
+Starts Nginx in the foreground to serve the app.
 
-# Backend Dockerfile (backend/Dockerfile)
+👉 Backend Dockerfile
+The backend Dockerfile also uses a multi-stage build:
 
-# Stage 1
-FROM eclipse-temurin:17-jdk-alpine AS build 
-WORKDIR /app
-COPY pom.xml ./
-COPY . .
-RUN ./mvnw dependency:go-offline
-RUN ./mvnw clean package -DskipTests=true
+👉 Build Stage:
+Uses a Java JDK image to compile the Spring Boot application.
+Downloads dependencies offline and packages the app into a single executable JAR.
 
-# Stage 2
-FROM eclipse-temurin:17-jre-alpine
-WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
-RUN addgroup --system user && adduser --system --ingroup user user
-USER user
-CMD ["java", "-jar", "app.jar"]
+👉 Production Stage:
+Uses a lightweight JRE image to run the application.
+Adds a non-root user for better security.
+Sets environment variables for Spring profiles and database connection.
+Runs the Spring Boot application using java -jar.
 
-#Docker Compose
-We orchestrate all services with docker-compose.yml.
+# Why Multi-Stage Builds?
+Reduces final image size
+Improves security (removes unnecessary build tools)
+Separates build environment from runtime environment
+Makes deployment faster and more efficient
 
-services:
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - /etc/letsencrypt:/etc/letsencrypt:ro
-    depends_on:
-      - frontend
-      - backend
-    networks:
-      - chattingo-app
+🐳 Docker Compose Setup
 
-  frontend:
-    build:
-      context: ./frontend/.
-    container_name: frontend
-    networks:
-      - chattingo-app
+# Services Overview
 
-  backend:
-    build:
-      context: ./backend/.
-    container_name: backend
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/chattingo_db?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false
-      SPRING_PROFILES_ACTIVE: development
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      JWT_SECRET: super-secret-key
-    depends_on:
-      mysql: 
-        condition: service_healthy
-    restart: always
-    networks:
-      - chattingo-app
+👉 Nginx (Reverse Proxy):
+Routes traffic to frontend and backend services.
+Handles HTTPS termination with Let’s Encrypt certificates.
+Depends on frontend and backend to be running before starting.
 
-  mysql:
-    image: mysql:latest
-    container_name: mysql
-    networks:
-      - chattingo-app
-    volumes:
-      - springboot_data:/var/lib/mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: chattingo_db
-    ports:
-      - "3306:3306"
-    healthcheck:
-      test: ["CMD","mysqladmin","ping","-h","localhost","-uroot","-proot"]
-      interval: 10s
-      retries: 5
-      start_period: 60s
-      timeout: 5s
-     
-volumes:
-  springboot_data:
+👉 Frontend:
+Built from the React app using a multi-stage Dockerfile.
+Serves the compiled static files via Nginx.
+Runs in its own isolated container connected to the chattingo-app network.
 
-networks:
-  chattingo-app:
-    name: chattingo-app
-# Nginx Reverse Proxy + SSL
-🤖 Jenkins Pipeline (CI/CD)
-@Library ('Shared') _
-pipeline {
-    agent any
-    environment{
-        GIT_URL = "https://github.com/Sourabh9125/chattingo.git/"
-        GIT_BRANCH = "development"
-        DOCKER_HUB_USERNAME = "sourabhlodhi"
-        DOCKER_IMAGE_TAG = "V${BUILD_NUMBER}"
-        DOCKER_FRONTEND_IMAGE = "chattingo-frontend"
-        DOCKER_BACKEND_IMAGE = "chattingo-backend"
-    }
-    stages {
-        stage('Clean Worksapce') {
-            steps {
-                script{
-                    clean_ws()
-                }
-            }
-        }
-        stage('Code Cloning') {
-            steps {
-                script{
-                    clone(env.GIT_URL, env.GIT_BRANCH)
-                }
-            }
-        }
-        stage("Build image"){
-            parallel{
-                 stage("Build Frontend Image"){
-                    steps{
-                        script{
-                            docker_build(
-                                imageName: env.DOCKER_FRONTEND_IMAGE,
-                                imageTag: env.DOCKER_IMAGE_TAG,
-                                context: "frontend",
-                                dockerfile: "frontend/Dockerfile",
-                                dockerHubUser: env.DOCKER_HUB_USERNAME
-                                )
-                        }
-                    }
-            }
-                 stage("Build Backend Image"){
-                   steps{
-                       script{
-                           docker_build(
-                               imageName: env.DOCKER_BACKEND_IMAGE,
-                               imageTag: env.DOCKER_IMAGE_TAG,
-                               context: "backend",
-                               dockerfile: "backend/Dockerfile",
-                               dockerHubUser: env.DOCKER_HUB_USERNAME
-                               )
-                       }
-                   }
-               }
-        }
-    }
-        stage("Testing the code"){
-            steps{
-                script{
-                    echo "Testing the code"
-                }
-            }
-        }
-        stage("Docker compose"){
-            steps{
-               script{
-                   docker_compose()
-               }
-            }
-        }
-  }
-}
+👉 Backend:
+Built from Spring Boot using a multi-stage Dockerfile.
+Connects to MySQL database with environment variables for credentials and connection settings.
+Runs under a non-root user for security and restarts automatically if it fails.
+
+👉 MySQL:
+Provides a persistent database for the application.
+Health-checked to ensure the backend starts only when the database is ready.
+Data persisted in a Docker volume for durability across container restarts.
+
+👉 Networks & Volumes:
+All containers share the chattingo-app network for secure communication.
+Database data is persisted in springboot_data volume.
+
+# Jenkins CI/CD Pipeline ⚙️
+
+The project uses Jenkins for continuous integration and deployment:
+Pipeline Highlights
+
+👉 Clean Workspace:
+Ensures old files are removed before starting a new build.
+
+👉 Code Cloning:
+Pulls the latest code from the GitHub repository development branch.
+
+👉 Build Docker Images:
+Frontend Image: Built from frontend directory.
+Backend Image: Built from backend directory.
+Uses dynamic version tagging with BUILD_NUMBER.
+Optional DockerHub Push: (commented for hackathon demo)
+Pushes built images to DockerHub under the user sourabhlodhi.
+
+👉 Testing:
+Runs project-specific test scripts (currently placeholder echo step).
+Docker Compose Deployment:
+Uses Docker Compose to start all services together, ensuring proper order and dependencies.
+
+✅ Benefits:
+Full containerized environment ensures the app runs the same on all machines.
+Automated CI/CD with Jenkins reduces manual deployment effort.
+Multi-stage Dockerfiles and volumes make images lightweight and data persistent.
+Secure configuration with HTTPS and non-root backend execution.
+
+# Nginx Reverse Proxy Configuration 🌐
+The Chattingo project uses Nginx as a reverse proxy to route traffic to the frontend and backend, enforce HTTPS, and optimize performance.
+
+Key Features
+- HTTP → HTTPS Redirection:
+All traffic on port 80 is automatically redirected to HTTPS on port 443 for secure communication.
+- Frontend Routing:
+Requests to the root path (/) are forwarded to the React frontend container.
+- Backend API Routing:
+Requests starting with /api/ are forwarded to the Spring Boot backend container.
+- SSL Certificates:
+Uses Let’s Encrypt certificates for secure HTTPS communication.
+- Proxy Headers:
+Preserves client information such as original IP and protocol using standard headers (Host, X-Real-IP, X-Forwarded-For, X-Forwarded-Proto).
+- Performance Settings:
+Configured worker connections ensure the server can handle multiple simultaneous connections efficiently.
+
 
 🚀 Deployment
 Clone repo: 
