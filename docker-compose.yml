@@ -1,4 +1,17 @@
 services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - chattingo-app
   frontend:
     build:
       context: ./frontend/.
@@ -6,10 +19,8 @@ services:
     container_name: frontend
     networks:
       - chattingo-app
-    depends_on:
-      - backend
-    ports: 
-      - "80:80"
+    # ports: 
+    #   - "80:80"
     
   backend:
     build:
@@ -24,8 +35,8 @@ services:
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
       JWT_SECRET: 9b4893a8ba233b4ae235718e5f813dbb1a5d9217b899c51168fedf222258b70b 
-    ports:
-      - "8081:8081"
+    # ports:
+    #   - "8081:8081"
     depends_on:
       mysql: 
         condition: service_healthy
