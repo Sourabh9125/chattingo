@@ -52,9 +52,7 @@ Improves security (removes unnecessary build tools)
 Separates build environment from runtime environment
 Makes deployment faster and more efficient
 
-🐳 Docker Compose Setup
-
-# Docker Compose Overview
+# 🐳 Docker Compose Overview
 
 👉 Nginx (Reverse Proxy):
 Routes traffic to frontend and backend services.
